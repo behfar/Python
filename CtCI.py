@@ -1,74 +1,96 @@
 # Numbers are randomly generated and stored into an (expanding) array.
 # How would you keep track of the median?
 # Answer: use a max heap and min heap for the bottom/top half of the numbers.
-# The roots of the heaps are the "two" medians
+# The roots of the heaps are the "two" medians, and their avg is the median
 from math import floor
-class Heap:
-    class Node:
-        def __init__(self, val):
-            self.val = val
-            self.left = None
-            self.right = None
+class Heap: # heap with 1-based index
     def __init__(self, type):
-        self.nodes = []
+        self.vals = []
         if type == 'Max':
             self.comparator = lambda x, y: x > y
         elif type == 'Min':
             self.comparator = lambda x, y: x < y
         else:
             print('Invalid heap type')
-    def add(self, val):
-        self.nodes.append(Heap.Node(val))
-        self.rebalance()
-    def rebalance(self):
-        cur_index = self.nodes.__len__()
-        done = False
-        while (cur_index > 1) and (not done):
-            par_index = floor(cur_index/2)
-            if self.comparator(self.nodes[cur_index-1].val, self.nodes[par_index-1].val):
-                # swap the two values and continue up the chain
-                self.nodes[cur_index-1].val, self.nodes[par_index-1].val = self.nodes[par_index-1].val, self.nodes[cur_index-1].val
-                cur_index = par_index
-            else:
-                done = True
-    def vals(self):
-        return [self.nodes[i].val for i in range(self.nodes.__len__())]
-    def root(self):
-        if self.nodes.__len__() != 0:
-            return self.nodes[0].val
+    def len(self):
+        return self.vals.__len__()
+    def empty(self):
+        return self.len() == 0
+    def get(self, index):
+        return self.vals[index-1]
+    def get_root(self):
+        if not self.empty():
+            return self.get(1)
         else:
             return None
-    def pop(self):
-        len self.nodes.__len__()
+    def get_vals(self):
+        return [self.get(index) for index in range(1, self.len()+1)]
+    def set(self, index, val):
+        self.vals[index-1] = val
+    def add(self, val):
+        self.vals.append(val)
+        self.bubble_up(self.len())
+    def swap(self, index1, index2):
+        temp = self.get(index1)
+        self.set(index1, self.get(index2))
+        self.set(index2, temp)
+    def delete(self, index):
+        del self.vals[index-1]
+    def delete_last(self):
+        self.delete(self.len())
+    def isleaf(self, index):
+        len = self.len()
+        left_child_index = index * 2
+        right_child_index = left_child_index + 1
+        return ((right_child_index > len) and (left_child_index > len))
+    def bubble_up(self, index):
+        cur_index = index
+        done = False
+        while (cur_index > 1) and (not done): # bubble element at index up through the heap
+            par_index = floor(cur_index/2) # parent of current node
+            if self.comparator(self.get(cur_index), self.get(par_index)):
+                # swap cur & par, and continue up the heap
+                self.swap(cur_index, par_index)
+                cur_index = par_index
+            else:
+                # cur is at its proper place in heap, no need to go higher
+                done = True
+    def compare(self, a, b):
+        return self.comparator(self.get(a), self.get(b))
+    def pop_root(self):
+        len = self.len() # by the end we will have one fewer node in the heap (if non-empty)
         if len == 0:
             return None
         elif len == 1:
-            rootVal = self.nodes[0].val
-            del self.nodes[0]
+            # delete and return root
+            rootVal = self.get_root()
+            self.delete(1)
             return rootVal
-        else:
-            rootVal = self.nodes[0].val # return this at the end
-            len = self.nodes.__len__() # by the end we will have one fewer node
-            hole_index = 0 # this is the hole that needs to be filled
-            while (hole_index < len) and (not done):
-                leftChild = 2 * hole_index
-                rightChild = leftChild + 1
-                if rightChild > len: # hole has no right child
-                    if leftChild > len: # hole has no left child either
-                        done = True # done with while loop, now fill this hole at the end
-                    else: # hole has no right child, but has left child
-                        self.nodes[hole_index-1].val = self.nodes[leftChild-1].val
-                        hole_index = leftChild
-                else: # hole has right child (and therefore also has left child)
-                    if (self.comparator(self.nodes[leftChild-1], self.nodes[rightChild-1])):
-                        self.nodes[hole_index-1].val = self.nodes[leftChild-1].val
-                        hole_index = leftChild
-                    else:
-                        self.nodes[hole_index-1].val = self.nodes[rightChild-1].val
-                        hole_index = rightChild
-            # fill hole_index with last element and then rebalance
-            self.nodes[hole_index-1].val = self.nodes[len-1].val
-            del self.nodes[-1]
+        else: # heap has at least one node below root, so bubble down hole left at to-be-popped root
+            rootVal = self.get_root() # save root val to return at the very end
+            hole_index = 1 # this is the hole (1-based index) that needs to be bubbled all the way down
+            self.set(hole_index, None)
+            while (not self.isleaf(hole_index)):
+                hole_left_child_index = hole_index * 2
+                hole_right_child_index = hole_left_child_index + 1
+                if ((hole_right_child_index <= len) and
+                    self.compare(hole_right_child_index, hole_left_child_index)):
+                    # hole has right child and it is the max/min, so bubble it up into the hole and continue down
+                    next_hole_index = hole_right_child_index
+                else:
+                    # else bubble up the left child into the hole and continue down
+                    next_hole_index = hole_left_child_index
+                # swap hole and climber
+                self.swap(hole_index, next_hole_index)
+                hole_index = next_hole_index
+
+            # hole is leaf now. if hole is not last heap element, move last heap element into hole and bubble up
+            if not(hole_index == len):
+                self.swap(hole_index, len)
+                self.bubble_up(hole_index)
+            # delete last heap element
+            self.delete_last()
+            # return popped root val
             return rootVal
 
 # Design an algorithm to print all permutations of a string.
